@@ -18,17 +18,21 @@ export default function JobsTab() {
 
   return (
     <div>
-      <h3>Recent Jobs</h3>
-      <button onClick={() => window.location.reload()} style={{marginBottom:'1rem'}}>Refresh</button>
+      <div className="result-header">
+        <h3>Recent Jobs</h3>
+        <button onClick={() => window.location.reload()} style={{padding:'0.5rem 1rem'}}>Refresh</button>
+      </div>
       <ul className="job-list">
         {jobs.map(j => (
           <li key={j.jobId} className="job-item" onClick={() => setSelectedJobId(j.jobId)}>
-            <div style={{display:'flex', justifyContent:'space-between'}}>
+            <div className="job-item-header">
               <strong>{j.seedUrl}</strong>
               <span className={`status-badge status-${j.status}`}>{j.status}</span>
             </div>
-            <div style={{fontSize:'0.8rem', color:'#666'}}>
-               {new Date(j.createdAt).toLocaleString()} | {j.mode} | {j.pageCount} pages
+            <div className="job-meta">
+               <span>📅 {new Date(j.createdAt).toLocaleDateString()} {new Date(j.createdAt).toLocaleTimeString()}</span>
+               <span>📝 {j.mode}</span>
+               <span>📄 {j.pageCount} pages</span>
             </div>
           </li>
         ))}
