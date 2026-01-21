@@ -1,0 +1,26 @@
+{
+  "name": "web-scrape-tool",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "dev:ui": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "start": "node src/index.js",
+    "postinstall": "cd frontend && npm install",
+    "install:all": "npm install && cd frontend && npm install"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "zod": "^3.22.4",
+    "pino": "^8.16.2",
+    "pino-pretty": "^10.2.3",
+    "playwright": "^1.40.1",
+    "cheerio": "^1.0.0-rc.12",
+    "turndown": "^7.1.2",
+    "mime-types": "^2.1.35",
+    "fs-extra": "^11.2.0",
+    "uuid": "^9.0.1",
+    "axios": "^1.6.2"
+  }
+}
