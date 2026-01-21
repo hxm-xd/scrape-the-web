@@ -92,7 +92,20 @@ export default function ScrapeTab() {
           
           {mode === 'main_content' && (
             <div>
-              <h4>Markdown Content</h4>
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                <h4>Markdown Content</h4>
+                <button onClick={() => {
+                  const blob = new Blob([result.contentMarkdown], { type: 'text/markdown;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `scrape-${new Date().getTime()}.md`;
+                  link.click();
+                  URL.revokeObjectURL(url);
+                }} style={{padding: '0.25rem 0.5rem', fontSize:'0.8rem'}}>
+                  Download .md
+                </button>
+              </div>
               <textarea 
                 style={{width:'100%', height:'300px', fontFamily:'monospace'}} 
                 value={result.contentMarkdown || ''}
