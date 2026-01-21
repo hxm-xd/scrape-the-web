@@ -34,37 +34,45 @@ export default function CrawlTab() {
   return (
     <div>
       {!jobId ? (
-        <div className="setup">
-           <div className="form-group">
-            <label>Seed URL</label>
-            <input type="text" value={seedUrl} onChange={e => setSeedUrl(e.target.value)} />
-          </div>
-          <div className="form-group">
-            <label>Mode</label>
-            <select value={mode} onChange={e => setMode(e.target.value)}>
-              <option value="main_content">Main Content</option>
-              <option value="redesign_context">Redesign Context</option>
-            </select>
-          </div>
-          <div style={{display:'flex', gap:'1rem'}}>
-            <div className="form-group">
-              <label>Max Pages</label>
-              <input type="number" value={maxPages} onChange={e => setMaxPages(e.target.value)} />
-            </div>
-            <div className="form-group">
-              <label>Max Depth</label>
-              <input type="number" value={maxDepth} onChange={e => setMaxDepth(e.target.value)} />
-            </div>
-          </div>
-          <div className="form-group">
-             <label>Include Patterns (comma sep)</label>
-             <input type="text" value={includePatterns} onChange={e => setIncludePatterns(e.target.value)} />
-          </div>
-          <div className="form-group">
-             <label>Exclude Patterns (comma sep)</label>
-             <input type="text" value={excludePatterns} onChange={e => setExcludePatterns(e.target.value)} />
-          </div>
-          <button className="primary" onClick={startCrawl} disabled={!seedUrl}>Start Crawl</button>
+        <div className="card">
+           <div className="crawl-form-grid">
+              <div className="form-group full-width">
+                <label>Seed URL</label>
+                <input type="text" placeholder="https://example.com" value={seedUrl} onChange={e => setSeedUrl(e.target.value)} />
+              </div>
+              
+              <div className="form-group span-2">
+                <label>Crawl Mode</label>
+                <select value={mode} onChange={e => setMode(e.target.value)}>
+                  <option value="main_content">Main Content (Text Focus)</option>
+                  <option value="redesign_context">Redesign Context (Struture)</option>
+                </select>
+              </div>
+
+               <div className="form-group">
+                  <label>Max Depth</label>
+                  <input type="number" min="0" max="10" value={maxDepth} onChange={e => setMaxDepth(e.target.value)} />
+               </div>
+
+               <div className="form-group">
+                  <label>Max Pages</label>
+                  <input type="number" min="1" value={maxPages} onChange={e => setMaxPages(e.target.value)} />
+               </div>
+
+               <div className="form-group span-2">
+                 <label>Include Patterns <span style={{color:'var(--text-muted)', fontWeight:'400', fontSize:'0.8em'}}>(Optional)</span></label>
+                 <input type="text" placeholder="/blog/*, /products/*" value={includePatterns} onChange={e => setIncludePatterns(e.target.value)} />
+               </div>
+               
+               <div className="form-group span-2">
+                 <label>Exclude Patterns <span style={{color:'var(--text-muted)', fontWeight:'400', fontSize:'0.8em'}}>(Optional)</span></label>
+                 <input type="text" placeholder="/auth/*, /admin/*" value={excludePatterns} onChange={e => setExcludePatterns(e.target.value)} />
+               </div>
+           </div>
+          
+          <button className="primary" onClick={startCrawl} disabled={!seedUrl} style={{width:'100%', padding:'1rem'}}>
+            Start Crawl
+          </button>
         </div>
       ) : (
         <JobDetail jobId={jobId} onBack={() => setJobId(null)} />
@@ -128,41 +136,63 @@ export function JobDetail({ jobId, onBack }) {
 
   return (
     <div>
-      <button onClick={onBack} style={{marginBottom:'1rem'}}>← Back/New</button>
-      <div style={{background:'#fff', padding:'1rem', border:'1px solid #eee', marginBottom:'1rem'}}>
-        <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
-            <div>
-                <h3>Job: {job.id.slice(0,8)}...</h3>
-                <div>Status: <span className={`status-badge status-${job.status}`}>{job.status}</span></div>
-                <p>Seed: {job.seedUrl}</p>
-                <p>Pages: {job.pages.length} / {job.config.maxPages}</p>
-                <p>Errors: {job.errors.length}</p>
+      <button onClick={onBack} style={{marginBottom:'1rem', background:'transparent', border:'none', color:'var(--text-secondary)', cursor:'pointer', padding:'0', display:'flex', alignItems:'center', gap:'0.5rem', fontWeight:'500'}}>
+         <span>←</span> Back
+      </button>
+
+      <div className="detail-header">
+        <div className="detail-info">
+            <h3 style={{marginTop:0, marginBottom:'0.5rem'}}>Job {job.id.slice(0,8)}</h3>
+            <div style={{display:'flex', flexDirection:'column', gap:'0.25rem'}}>
+                 <div style={{display:'flex', gap:'1rem', alignItems:'center'}}>
+                    <span className={`status-badge status-${job.status}`}>{job.status}</span>
+                </div>
+                <span style={{color:'var(--text-secondary)', fontSize:'0.85rem', fontFamily:'monospace'}}>{job.seedUrl}</span>
             </div>
-            {(job.status === 'completed' || job.pages.length > 0) && (
-                <button onClick={downloadZip} className="primary" style={{fontSize:'0.9rem'}}>
-                    Download Markdown (ZIP)
-                </button>
-            )}
         </div>
+        
+        <div className="detail-stats">
+             <div className="detail-stat-item">
+                <span className="stat-label">Pages Found</span>
+                <span className="stat-value">{job.pages.length}<span style={{fontSize:'1rem', color:'var(--text-muted)', fontWeight:'400'}}>/ {job.config.maxPages}</span></span>
+             </div>
+             <div className="detail-stat-item">
+                <span className="stat-label">Errors</span>
+                <span className="stat-value" style={{color: job.errors.length > 0 ? 'var(--error-text)' : 'inherit'}}>{job.errors.length}</span>
+             </div>
+        </div>
+
+        {(job.status === 'completed' || job.pages.length > 0) && (
+            <button onClick={downloadZip} className="primary">
+                Download ZIP
+            </button>
+        )}
       </div>
 
-      <h4>Pages</h4>
-      <ul className="job-list">
-        {job.pages.map((p, i) => (
-          <li key={i} className="job-item">
-             <div style={{display:'flex', justifyContent:'space-between'}}>
-               <strong>{p.url}</strong>
-               <span>{p.status}</span>
-             </div>
-             <div>{p.title || 'No title'}</div>
-             <div style={{fontSize: 'small', marginTop:'0.5rem'}}>
-                <a href={`/outputs/${job.id}/${p.rawHtmlPath || '#'}`} target="_blank" rel="noreferrer">HTML</a> 
-                {' | '}
-                {p.screenshots?.desktopPath && <a href={`/outputs/${job.id}/${p.screenshots.desktopPath}`} target="_blank" rel="noreferrer">Screenshot</a>}
-             </div>
-          </li>
-        ))}
-      </ul>
+      <h4 style={{marginTop:'2rem', marginBottom:'1rem'}}>Scraped Pages <span style={{color:'var(--text-muted)', fontWeight:'400', fontSize:'0.9rem'}}>({job.pages.length})</span></h4>
+      
+      {job.pages.length === 0 ? (
+          <div className="card" style={{textAlign:'center', color:'var(--text-secondary)'}}>No pages scraped yet.</div>
+      ) : (
+        <div className="pages-list">
+            {job.pages.map((p, i) => (
+            <div key={i} className="page-item">
+                <div style={{flex:1, minWidth:0, paddingRight:'2rem'}}>
+                    <div style={{display:'flex', alignItems:'center', gap:'0.75rem', marginBottom:'0.25rem'}}>
+                        <strong className="page-url" title={p.url}>{p.url.replace(new RegExp(`^${job.seedUrl}`), '') || '/'}</strong>
+                        <span style={{fontSize:'0.7rem', padding:'1px 5px', borderRadius:'4px', background:'var(--bg-main)', color:'var(--text-secondary)', border:'1px solid var(--border-color)'}}>{p.status}</span>
+                    </div>
+                    <div style={{color:'var(--text-secondary)', fontSize:'0.8rem', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{p.title || 'Untitled Page'}</div>
+                </div>
+                
+                <div style={{display:'flex', gap:'1rem', fontSize: '0.8rem', flexShrink:0}}>
+                    {p.rawHtmlPath && <a href={`/outputs/${job.id}/${p.rawHtmlPath}`} target="_blank" rel="noreferrer" style={{color:'var(--text-secondary)'}}>HTML</a>}
+                    {p.screenshots?.desktopPath && <a href={`/outputs/${job.id}/${p.screenshots.desktopPath}`} target="_blank" rel="noreferrer" style={{color:'var(--text-secondary)'}}>View Shot</a>}
+                </div>
+            </div>
+            ))}
+        </div>
+      )}
       
       {job.errors.length > 0 && (
         <div style={{color:'red', marginTop:'1rem'}}>

@@ -5,18 +5,15 @@ export default function Footer() {
     <footer className="app-footer">
       <div className="footer-content">
         <div className="dev-info">
-          <p>Developed by <strong>Hamood Thariq</strong></p>
-          <a href="https://hamoodthariq.vercel.app" target="_blank" rel="noreferrer" className="portfolio-link">
-            Visit Portfolio →
-          </a>
+          <p>Built for Vibe-Site</p>
+          
         </div>
         <div className="tech-stack-container">
-          <span className="stack-label">Powered by:</span>
           <div className="tech-stack">
-            <span className="tech-tag" title="Frontend Framework">⚛️ React</span>
-            <span className="tech-tag" title="Build Tool">⚡ Vite</span>
-            <span className="tech-tag" title="Backend Runtime">🟢 Node.js</span>
-            <span className="tech-tag" title="Browser Automation">🎭 Playwright</span>
+            <span className="tech-tag">React</span>
+            <span className="tech-tag">Vite</span>
+            <span className="tech-tag">Node.js</span>
+            <span className="tech-tag">Playwright</span>
           </div>
         </div>
       </div>

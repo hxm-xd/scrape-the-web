@@ -61,40 +61,61 @@ export default function ScrapeTab() {
   };
 
   return (
-    <div>
-      <div className="form-group">
-        <label>URL</label>
-        <input type="text" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://example.com" />
+    <div className="card">
+      <div className="crawl-form-grid">
+        <div className="form-group full-width">
+          <label>URL</label>
+          <input type="text" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://example.com" />
+        </div>
+        
+        <div className="form-group span-2">
+          <label>Mode</label>
+          <select value={mode} onChange={e => setMode(e.target.value)}>
+            <option value="main_content">Main Content (Markdown)</option>
+            <option value="redesign_context">Redesign Context</option>
+          </select>
+        </div>
+
+        <div className="form-group span-2" style={{alignSelf:'center'}}>
+           <label className="checkbox-label" style={{display:'flex', alignItems:'center', gap:'0.75rem', cursor:'pointer', marginBottom:0, height:'42px'}}>
+              <input type="checkbox" checked={forceRender} onChange={e => setForceRender(e.target.checked)} style={{width:'auto', margin:0, height:'1.2rem', width:'1.2rem', accentColor:'var(--primary)'}} />
+              <span style={{color:'var(--text-main)', fontWeight:'500'}}>Force Render (Playwright)</span>
+           </label>
+        </div>
       </div>
-      <div className="form-group">
-        <label>Mode</label>
-        <select value={mode} onChange={e => setMode(e.target.value)}>
-          <option value="main_content">Main Content (Markdown)</option>
-          <option value="redesign_context">Redesign Context</option>
-        </select>
-      </div>
-      <div className="form-group">
-        <label>
-          <input type="checkbox" checked={forceRender} onChange={e => setForceRender(e.target.checked)} />
-          Force Render (Playwright)
-        </label>
-      </div>
-      <button className="primary" onClick={handleRun} disabled={loading || !url}>
+
+      <button className="primary" onClick={handleRun} disabled={loading || !url} style={{width:'100%', padding:'1rem'}}>
         {loading ? 'Scraping...' : 'Run Scrape'}
       </button>
 
-      {error && <div style={{color:'red', marginTop: '1rem'}}>{error}</div>}
+      {error && (
+        <div style={{
+            marginTop: '1.5rem', 
+            padding: '1rem', 
+            background: 'rgba(69, 10, 10, 0.2)', 
+            border: '1px solid rgba(248, 113, 113, 0.2)', 
+            color: 'var(--error-text)', 
+            borderRadius:'var(--radius-sm)'
+        }}>
+            {error}
+        </div>
+      )}
 
       {result && (
-        <div className="results">
-          <h3>Result: {result.status}</h3>
-          <p>Effective URL: <a href={result.finalUrl} target="_blank" rel="noreferrer">{result.finalUrl}</a></p>
+        <div className="results" style={{borderTop:'none', paddingTop:0}}>
+          <div className="detail-header" style={{marginBottom:'1rem'}}>
+               <div style={{display:'flex', gap:'1rem', alignItems:'center'}}>
+                   <h3 style={{margin:0}}>Result</h3>
+                   <span className="status-badge status-completed">{result.status}</span>
+               </div>
+               <a href={result.finalUrl} target="_blank" rel="noreferrer" style={{color:'var(--text-secondary)', fontSize:'0.9rem', fontFamily:'monospace'}}>{result.finalUrl || 'No URL'}</a>
+          </div>
           
           {mode === 'main_content' && (
             <div>
-              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                <h4>Markdown Content</h4>
-                <button onClick={() => {
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem'}}>
+                <h4 style={{margin:0}}>Markdown Content</h4>
+                <button className="primary" style={{padding:'0.5rem 1rem', fontSize:'0.85rem'}} onClick={() => {
                   const blob = new Blob([result.contentMarkdown], { type: 'text/markdown;charset=utf-8' });
                   const url = URL.createObjectURL(blob);
                   const link = document.createElement('a');
