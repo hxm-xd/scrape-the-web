@@ -5,7 +5,7 @@ export default function Footer() {
     <footer className="app-footer">
       <div className="footer-content">
         <div className="dev-info">
-          <p>Built for Vibe-Site</p>
+          <p>Designed and developed by Hamood Thariq</p>
           
         </div>
         <div className="tech-stack-container">
