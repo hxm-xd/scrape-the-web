@@ -93,8 +93,30 @@ export function JobDetail({ jobId, onBack }) {
   const fetchJob = async () => {
     try {
       const res = await fetch(`/api/jobs/${jobId}`);
+      if (res.status === 404) {
+        // Job no longer exists on server (likely restart)
+        // Stop polling by unmounting component or alerting
+        onBack(); 
+        return;
+      }
       if (res.ok) setJob(await res.json());
     } catch {}
+  };
+
+  const downloadCombined = () => {
+    if (!job || !job.pages || job.pages.length === 0) return;
+    
+    let combined = `# Crawl Report for ${job.seedUrl}\n\n`;
+    job.pages.forEach((p, i) => {
+        if (!p.contentMarkdown) return;
+        combined += `---\n\n`;
+        combined += `## Page ${i+1}: ${p.url}\n`;
+        combined += `Title: ${p.title || 'Untitled'}\n\n`;
+        combined += `${p.contentMarkdown}\n\n`;
+    });
+
+    const blob = new Blob([combined], { type: 'text/markdown;charset=utf-8' });
+    saveAs(blob, `job-${job.id.substring(0,8)}-combined.md`);
   };
 
   const downloadZip = async () => {
@@ -163,9 +185,14 @@ export function JobDetail({ jobId, onBack }) {
         </div>
 
         {(job.status === 'completed' || job.pages.length > 0) && (
-            <button onClick={downloadZip} className="primary">
-                Download ZIP
-            </button>
+            <div style={{display:'flex', gap:'0.5rem'}}>
+                <button onClick={downloadCombined} className="primary" style={{background:'var(--bg-input)', border:'1px solid var(--border-color)', color:'var(--text-main)'}}>
+                    Combined MD
+                </button>
+                <button onClick={downloadZip} className="primary">
+                    Download ZIP
+                </button>
+            </div>
         )}
       </div>
 

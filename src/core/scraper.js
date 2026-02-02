@@ -74,7 +74,7 @@ async function runScraper(url, mode, outputDir, forceRender) {
   }
 
   const $ = cheerio.load(html);
-  $('script, style, nav, footer').remove();
+  $('script, style, nav, footer, head, meta, link, img, picture, video, audio, svg, iframe, object, embed').remove();
   const content = $('body').html() || '';
   const markdown = turndownService.turndown(content);
 
@@ -97,6 +97,10 @@ function extractLinks(html, baseUrl) {
         try {
             const absolute = new URL(href, baseUrl).href;
             const absUrl = new URL(absolute);
+            
+            // Skip PDF files
+            if (absUrl.pathname.toLowerCase().endsWith('.pdf')) return;
+
             if (absUrl.hostname === base.hostname) internal.add(absolute);
             else external.add(absolute);
         } catch { }
