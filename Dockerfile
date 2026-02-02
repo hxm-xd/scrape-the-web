@@ -1,5 +1,5 @@
-# Use the official Playwright image which comes with Node.js and browsers installed
-FROM mcr.microsoft.com/playwright:v1.40.0-jammy
+# Use a newer Playwright image to satisfy Node.js version requirements (>=20.18 for cheerio)
+FROM mcr.microsoft.com/playwright:v1.48.0-jammy
 
 # Set working directory
 WORKDIR /app
@@ -8,7 +8,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install backend dependencies
-RUN npm ci
+# Use --ignore-scripts to prevent the 'postinstall' script (which tries to cd to frontend) from running
+RUN npm ci --ignore-scripts
 
 # Copy frontend package files
 COPY frontend/package*.json ./frontend/
