@@ -5,11 +5,16 @@ const fs = require('fs-extra');
 const path = require('path');
 const crypto = require('crypto');
 const axios = require('axios');
+const { extractProduct, shapeProduct } = require('./product');
+const { classifyPage, extractCatalogLinks } = require('./catalog');
 
 const turndownService = new TurndownService();
 
 // Mock implementation of redesign analysis for MVP
-async function runScraper(url, mode, outputDir, forceRender) {
+async function runScraper(url, mode, outputDir, options = {}) {
+  const forceRender = typeof options === 'boolean' ? options : !!options.forceRender;
+  const selectors = typeof options === 'boolean' ? {} : (options.selectors || {});
+  const output = typeof options === 'boolean' ? undefined : options.output;
   // Validate URL (SSRF check - simple)
   try {
     const parsed = new URL(url);
@@ -23,7 +28,7 @@ async function runScraper(url, mode, outputDir, forceRender) {
   let status = 200;
   
   // Try static first if not forced
-  if (!forceRender && mode === 'main_content') {
+  if (!forceRender && (mode === 'main_content' || mode === 'product')) {
       try {
         const res = await axios.get(url, { timeout: 10000 });
         html = res.data;
@@ -71,6 +76,18 @@ async function runScraper(url, mode, outputDir, forceRender) {
           throw e;
       }
       await browser.close();
+  }
+
+  if (mode === 'product') {
+    const pageKind = classifyPage(html, finalUrl);
+    const links = { internal: extractCatalogLinks(html, finalUrl), external: [] };
+    if (pageKind !== 'product') {
+      return { url, finalUrl, status, links, pageKind, product: null };
+    }
+    return {
+      url, finalUrl, status, links, pageKind,
+      product: shapeProduct(extractProduct(html, finalUrl, selectors), output)
+    };
   }
 
   const $ = cheerio.load(html);

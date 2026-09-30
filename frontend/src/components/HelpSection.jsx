@@ -11,6 +11,7 @@ export default function HelpSection() {
           <ul>
             <li><strong>Main Content:</strong> Extracts clean markdown (like Reader Mode).</li>
             <li><strong>Redesign Context:</strong> Captures screenshots, HTML structure, and style info.</li>
+            <li><strong>Product Details:</strong> Name and price by default. Switch Output to All details for SKU, availability, and specifications.</li>
             <li><strong>Force Render:</strong> Check this if the site uses heavy JavaScript (SPA).</li>
           </ul>
         </div>
@@ -20,7 +21,8 @@ export default function HelpSection() {
           <ul>
             <li><strong>Max Depth:</strong> Hops away from seed (0 = just seed, 1 = seed + direct links).</li>
             <li><strong>Include/Exclude:</strong> Filter URLs by keywords (comma-separated).</li>
-            <li><strong>Download:</strong> Get a ZIP of all markdown files when done.</li>
+            <li><strong>Product crawl:</strong> Saves individual products. Category, collection, and filter links such as /collections or ?brand=&amp;page= are followed, not listed, and duplicate URLs are collapsed.</li>
+            <li><strong>Download:</strong> Save Markdown, a ZIP, or a Word document when the crawl finishes.</li>
           </ul>
         </div>
       </div>

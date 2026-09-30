@@ -44,7 +44,7 @@ export default function JobsTab() {
                    </div>
                    <div className="stat-row">
                      <span>Mode</span>
-                     <span style={{textTransform: 'capitalize'}}>{j.mode.replace('_', ' ')}</span>
+                     <span style={{textTransform: 'capitalize'}}>{j.mode.replaceAll('_', ' ')}</span>
                    </div>
                    <div className="stat-row" style={{marginTop:'0.5rem', paddingTop:'0.5rem', borderTop:'1px dashed var(--border-color)'}}>
                      <span>Pages Scraped</span>

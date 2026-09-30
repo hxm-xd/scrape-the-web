@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
+import ProductSelectors, { EMPTY_SELECTORS, compactSelectors } from './ProductSelectors';
+import ProductResult, { downloadProductJson } from './ProductResult';
+import { saveMarkdownWord, saveProductWord } from '../exportWord';
 
 export default function ScrapeTab() {
   const [url, setUrl] = useState('');
   const [mode, setMode] = useState('main_content');
   const [forceRender, setForceRender] = useState(false);
+  const [selectors, setSelectors] = useState(EMPTY_SELECTORS);
+  const [productOutput, setProductOutput] = useState('name_price');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -12,11 +17,25 @@ export default function ScrapeTab() {
     setLoading(true);
     setError(null);
     setResult(null);
+
+    let submitUrl = url.trim();
+    if (submitUrl && !/^https?:\/\//i.test(submitUrl)) {
+      submitUrl = 'https://' + submitUrl;
+    }
+
     try {
       const res = await fetch('/api/scrape', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, mode, forceRender })
+        body: JSON.stringify({
+          url: submitUrl,
+          mode,
+          forceRender,
+          selectors: mode === 'product'
+            ? compactSelectors(selectors, productOutput === 'name_price' ? ['name', 'price'] : undefined)
+            : undefined,
+          output: mode === 'product' ? productOutput : undefined
+        })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
@@ -73,6 +92,7 @@ export default function ScrapeTab() {
           <select value={mode} onChange={e => setMode(e.target.value)}>
             <option value="main_content">Main Content (Markdown)</option>
             <option value="redesign_context">Redesign Context</option>
+            <option value="product">Product Details</option>
           </select>
         </div>
 
@@ -82,6 +102,23 @@ export default function ScrapeTab() {
               <span style={{color:'var(--text-main)', fontWeight:'500'}}>Force Render (Playwright)</span>
            </label>
         </div>
+
+        {mode === 'product' && (
+          <>
+            <div className="form-group span-2">
+              <label>Output</label>
+              <select value={productOutput} onChange={e => setProductOutput(e.target.value)}>
+                <option value="name_price">Name and price</option>
+                <option value="full">All details</option>
+              </select>
+            </div>
+            <ProductSelectors
+              selectors={selectors}
+              onChange={setSelectors}
+              nameAndPriceOnly={productOutput === 'name_price'}
+            />
+          </>
+        )}
       </div>
 
       <button className="primary" onClick={handleRun} disabled={loading || !url} style={{width:'100%', padding:'1rem'}}>
@@ -110,22 +147,28 @@ export default function ScrapeTab() {
                </div>
                <a href={result.finalUrl} target="_blank" rel="noreferrer" style={{color:'var(--text-secondary)', fontSize:'0.9rem', fontFamily:'monospace'}}>{result.finalUrl || 'No URL'}</a>
           </div>
+          {result.error && <p className="field-hint">{result.error}</p>}
           
           {mode === 'main_content' && (
             <div>
               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem'}}>
                 <h4 style={{margin:0}}>Markdown Content</h4>
-                <button className="primary" style={{padding:'0.5rem 1rem', fontSize:'0.85rem'}} onClick={() => {
-                  const blob = new Blob([result.contentMarkdown], { type: 'text/markdown;charset=utf-8' });
-                  const url = URL.createObjectURL(blob);
-                  const link = document.createElement('a');
-                  link.href = url;
-                  link.download = `scrape-${new Date().getTime()}.md`;
-                  link.click();
-                  URL.revokeObjectURL(url);
-                }} style={{padding: '0.25rem 0.5rem', fontSize:'0.8rem'}}>
-                  Download .md
-                </button>
+                <div style={{display:'flex', gap:'0.5rem', flexWrap:'wrap'}}>
+                  <button className="primary" style={{padding:'0.5rem 1rem', fontSize:'0.85rem', background:'var(--bg-input)', border:'1px solid var(--border-color)', color:'var(--text-main)'}} onClick={() => saveMarkdownWord(result.contentMarkdown, `scrape-${Date.now()}.docx`, result.finalUrl)}>
+                    Download Word
+                  </button>
+                  <button className="primary" style={{padding:'0.5rem 1rem', fontSize:'0.85rem'}} onClick={() => {
+                    const blob = new Blob([result.contentMarkdown], { type: 'text/markdown;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `scrape-${Date.now()}.md`;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                  }}>
+                    Download .md
+                  </button>
+                </div>
               </div>
               <textarea 
                 style={{width:'100%', height:'300px', fontFamily:'monospace'}} 
@@ -133,6 +176,22 @@ export default function ScrapeTab() {
                 readOnly 
               />
             </div>
+          )}
+
+          {mode === 'product' && result.product && (
+            <ProductResult
+              product={result.product}
+              onDownload={() => downloadProductJson(result.product, `product-${Date.now()}.json`)}
+              onDownloadWord={() => saveProductWord(
+                { ...result.product, url: result.finalUrl || result.url },
+                `product-${Date.now()}.docx`
+              )}
+            />
+          )}
+          {mode === 'product' && !result.product && !result.error && (
+            <p className="field-hint">
+              This page is a category, collection, or filtered list, not a single product. Links like /collections and ?brand=&amp;page= are skipped. Use Crawl to collect the products on it.
+            </p>
           )}
 
           {mode === 'redesign_context' && (

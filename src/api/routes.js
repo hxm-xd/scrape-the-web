@@ -11,11 +11,18 @@ router.post('/scrape', async (req, res) => {
     const data = ScrapeRequestSchema.parse(req.body);
     const job = jobManager.createJob(data.url, data.mode, {
       maxPages: 1,
-      forceRender: data.forceRender
+      forceRender: data.forceRender,
+      selectors: data.selectors,
+      output: data.output,
+      followLinks: false
     });
     res.json(job);
   } catch (e) {
-    res.status(400).json({ error: e.errors || e.message });
+    const errorMsg = e.errors 
+      ? e.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ') 
+      : e.message;
+    console.error('Scrape API Error:', errorMsg);
+    res.status(400).json({ error: errorMsg });
   }
 });
 
@@ -26,11 +33,17 @@ router.post('/crawl', async (req, res) => {
       maxPages: data.maxPages,
       maxDepth: data.maxDepth,
       includePatterns: data.includePatterns,
-      excludePatterns: data.excludePatterns
+      excludePatterns: data.excludePatterns,
+      selectors: data.selectors,
+      output: data.output
     });
     res.json({ jobId: job.id });
   } catch (e) {
-    res.status(400).json({ error: e.errors || e.message });
+    const errorMsg = e.errors 
+      ? e.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ') 
+      : e.message;
+    console.error('Crawl API Error:', errorMsg);
+    res.status(400).json({ error: errorMsg });
   }
 });
 

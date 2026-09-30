@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
+import ProductSelectors, { EMPTY_SELECTORS, compactSelectors } from './ProductSelectors';
+import { saveMarkdownWord, saveProductsWord } from '../exportWord';
 
 export default function CrawlTab() {
   const [seedUrl, setSeedUrl] = useState('');
   const [mode, setMode] = useState('main_content');
+  const [selectors, setSelectors] = useState(EMPTY_SELECTORS);
+  const [productOutput, setProductOutput] = useState('name_price');
   const [maxPages, setMaxPages] = useState(25);
   const [maxDepth, setMaxDepth] = useState(2);
   const [includePatterns, setIncludePatterns] = useState('');
@@ -15,12 +19,21 @@ export default function CrawlTab() {
 
   const startCrawl = async () => {
     try {
+      let submitUrl = seedUrl.trim();
+      if (submitUrl && !/^https?:\/\//i.test(submitUrl)) {
+        submitUrl = 'https://' + submitUrl;
+      }
+
       const res = await fetch('/api/crawl', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          seedUrl, mode, maxPages: parseInt(maxPages), maxDepth: parseInt(maxDepth),
-          includePatterns, excludePatterns
+          seedUrl: submitUrl, mode, maxPages: parseInt(maxPages), maxDepth: parseInt(maxDepth),
+          includePatterns, excludePatterns,
+          selectors: mode === 'product'
+            ? compactSelectors(selectors, productOutput === 'name_price' ? ['name', 'price'] : undefined)
+            : undefined,
+          output: mode === 'product' ? productOutput : undefined
         })
       });
       const data = await res.json();
@@ -46,6 +59,7 @@ export default function CrawlTab() {
                 <select value={mode} onChange={e => setMode(e.target.value)}>
                   <option value="main_content">Main Content (Text Focus)</option>
                   <option value="redesign_context">Redesign Context (Struture)</option>
+                  <option value="product">Product Details</option>
                 </select>
               </div>
 
@@ -68,6 +82,23 @@ export default function CrawlTab() {
                  <label>Exclude Patterns <span style={{color:'var(--text-muted)', fontWeight:'400', fontSize:'0.8em'}}>(Optional)</span></label>
                  <input type="text" placeholder="/auth/*, /admin/*" value={excludePatterns} onChange={e => setExcludePatterns(e.target.value)} />
                </div>
+
+               {mode === 'product' && (
+                 <>
+                   <div className="form-group span-2">
+                     <label>Output</label>
+                     <select value={productOutput} onChange={e => setProductOutput(e.target.value)}>
+                       <option value="name_price">Name and price</option>
+                       <option value="full">All details</option>
+                     </select>
+                   </div>
+                   <ProductSelectors
+                     selectors={selectors}
+                     onChange={setSelectors}
+                     nameAndPriceOnly={productOutput === 'name_price'}
+                   />
+                 </>
+               )}
            </div>
           
           <button className="primary" onClick={startCrawl} disabled={!seedUrl} style={{width:'100%', padding:'1rem'}}>
@@ -103,9 +134,7 @@ export function JobDetail({ jobId, onBack }) {
     } catch {}
   };
 
-  const downloadCombined = () => {
-    if (!job || !job.pages || job.pages.length === 0) return;
-    
+  const combinedMarkdown = () => {
     let combined = `# Crawl Report for ${job.seedUrl}\n\n`;
     job.pages.forEach((p, i) => {
         if (!p.contentMarkdown) return;
@@ -114,9 +143,35 @@ export function JobDetail({ jobId, onBack }) {
         combined += `Title: ${p.title || 'Untitled'}\n\n`;
         combined += `${p.contentMarkdown}\n\n`;
     });
+    return combined;
+  };
 
-    const blob = new Blob([combined], { type: 'text/markdown;charset=utf-8' });
+  const productRows = () => (job.pages || [])
+    .filter((p) => p.product && (p.product.name || p.product.price || p.product.priceText))
+    .map((p) => ({ url: p.finalUrl || p.url, ...p.product }));
+
+  const downloadCombined = () => {
+    if (!job || !job.pages || job.pages.length === 0) return;
+    const blob = new Blob([combinedMarkdown()], { type: 'text/markdown;charset=utf-8' });
     saveAs(blob, `job-${job.id.substring(0,8)}-combined.md`);
+  };
+
+  const downloadProducts = () => {
+    const products = productRows();
+    if (products.length === 0) return alert('No product details available to download.');
+    const blob = new Blob([JSON.stringify(products, null, 2)], { type: 'application/json;charset=utf-8' });
+    saveAs(blob, `job-${job.id.substring(0, 8)}-products.json`);
+  };
+
+  const downloadWord = () => {
+    if (!job) return;
+    const stamp = job.id.substring(0, 8);
+    if (job.mode === 'product') {
+      const products = productRows();
+      if (products.length === 0) return alert('No product details available to download.');
+      return saveProductsWord(products, `job-${stamp}-products.docx`, job.seedUrl);
+    }
+    return saveMarkdownWord(combinedMarkdown(), `job-${stamp}-crawl.docx`, job.seedUrl);
   };
 
   const downloadZip = async () => {
@@ -186,12 +241,23 @@ export function JobDetail({ jobId, onBack }) {
 
         {(job.status === 'completed' || job.pages.length > 0) && (
             <div style={{display:'flex', gap:'0.5rem'}}>
-                <button onClick={downloadCombined} className="primary" style={{background:'var(--bg-input)', border:'1px solid var(--border-color)', color:'var(--text-main)'}}>
-                    Combined MD
+                <button onClick={downloadWord} className="primary" style={{background:'var(--bg-input)', border:'1px solid var(--border-color)', color:'var(--text-main)'}}>
+                    Download Word
                 </button>
-                <button onClick={downloadZip} className="primary">
-                    Download ZIP
-                </button>
+                {job.mode === 'product' ? (
+                  <button onClick={downloadProducts} className="primary">
+                    Download JSON
+                  </button>
+                ) : (
+                  <>
+                    <button onClick={downloadCombined} className="primary" style={{background:'var(--bg-input)', border:'1px solid var(--border-color)', color:'var(--text-main)'}}>
+                        Combined MD
+                    </button>
+                    <button onClick={downloadZip} className="primary">
+                        Download ZIP
+                    </button>
+                  </>
+                )}
             </div>
         )}
       </div>
@@ -199,17 +265,24 @@ export function JobDetail({ jobId, onBack }) {
       <h4 style={{marginTop:'2rem', marginBottom:'1rem'}}>Scraped Pages <span style={{color:'var(--text-muted)', fontWeight:'400', fontSize:'0.9rem'}}>({job.pages.length})</span></h4>
       
       {job.pages.length === 0 ? (
-          <div className="card" style={{textAlign:'center', color:'var(--text-secondary)'}}>No pages scraped yet.</div>
+          <div className="card" style={{textAlign:'center', color:'var(--text-secondary)'}}>
+            {job.status === 'completed'
+              ? 'No product pages were saved. Category and filter links are skipped. Try the category URL again with Max Depth at least 1 and Include left blank.'
+              : 'No pages scraped yet.'}
+          </div>
       ) : (
         <div className="pages-list">
             {job.pages.map((p, i) => (
             <div key={i} className="page-item">
                 <div style={{flex:1, minWidth:0, paddingRight:'2rem'}}>
                     <div style={{display:'flex', alignItems:'center', gap:'0.75rem', marginBottom:'0.25rem'}}>
-                        <strong className="page-url" title={p.url}>{p.url.replace(new RegExp(`^${job.seedUrl}`), '') || '/'}</strong>
+                        <strong className="page-url" title={p.url}>{(p.url.startsWith(job.seedUrl) ? p.url.slice(job.seedUrl.length) : p.url) || '/'}</strong>
                         <span style={{fontSize:'0.7rem', padding:'1px 5px', borderRadius:'4px', background:'var(--bg-main)', color:'var(--text-secondary)', border:'1px solid var(--border-color)'}}>{p.status}</span>
                     </div>
-                    <div style={{color:'var(--text-secondary)', fontSize:'0.8rem', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{p.title || 'Untitled Page'}</div>
+                    <div style={{color:'var(--text-secondary)', fontSize:'0.8rem', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                      {p.product?.name || p.title || 'Untitled Page'}
+                      {p.product?.priceText ? ` · ${p.product.priceText}` : p.product?.price ? ` · ${p.product.price}` : ''}
+                    </div>
                 </div>
                 
                 <div style={{display:'flex', gap:'1rem', fontSize: '0.8rem', flexShrink:0}}>
