@@ -208,6 +208,20 @@ function extractCatalogLinks(html, pageUrl) {
   return collectLinks($, $.root(), pageUrl).filter((url) => isUsefulCatalogLink(url, pageUrl));
 }
 
+function isSiblingFilter(value, currentUrl) {
+  try {
+    if (isPaginationUrl(value, currentUrl)) return false;
+    const next = new URL(value);
+    const current = new URL(currentUrl);
+    const nextPath = (next.pathname.replace(/\/+$/, '') || '/').toLowerCase();
+    const currentPath = (current.pathname.replace(/\/+$/, '') || '/').toLowerCase();
+    if (nextPath !== currentPath) return false;
+    return next.search !== current.search;
+  } catch {
+    return false;
+  }
+}
+
 function nextCrawlDepth({ url, currentUrl, pageKind, depth, maxDepth, mode }) {
   if (mode !== 'product') return depth < maxDepth ? depth + 1 : null;
   const fromCatalog = pageKind === 'listing' || pageKind === 'other';
@@ -216,7 +230,7 @@ function nextCrawlDepth({ url, currentUrl, pageKind, depth, maxDepth, mode }) {
     return depth < maxDepth ? depth + 1 : null;
   }
   if (isPaginationUrl(url, currentUrl) && (fromCatalog || depth < maxDepth)) return depth;
-  if (isListingUrl(url) && depth < maxDepth) return depth + 1;
+  if (isListingUrl(url) && !isSiblingFilter(url, currentUrl) && depth < maxDepth) return depth + 1;
   return null;
 }
 

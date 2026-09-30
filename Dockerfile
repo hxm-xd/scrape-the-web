@@ -1,5 +1,5 @@
-# Use a newer Playwright image to satisfy Node.js version requirements (>=20.18 for cheerio)
-FROM mcr.microsoft.com/playwright:v1.48.0-jammy
+# Playwright browsers in this image must match the playwright version in package.json.
+FROM mcr.microsoft.com/playwright:v1.57.0-jammy
 
 # Set working directory
 WORKDIR /app

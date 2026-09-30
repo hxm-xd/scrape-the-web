@@ -6,9 +6,13 @@ const path = require('path');
 const crypto = require('crypto');
 const axios = require('axios');
 const { extractProduct, shapeProduct } = require('./product');
-const { classifyPage, extractCatalogLinks } = require('./catalog');
+const { classifyPage, extractCatalogLinks, isProductUrl, isLikelyProductLink } = require('./catalog');
 
 const turndownService = new TurndownService();
+
+function listingHasProducts(html, pageUrl) {
+  return extractCatalogLinks(html, pageUrl).some((link) => isProductUrl(link) || isLikelyProductLink(link));
+}
 
 // Mock implementation of redesign analysis for MVP
 async function runScraper(url, mode, outputDir, options = {}) {
@@ -31,9 +35,18 @@ async function runScraper(url, mode, outputDir, options = {}) {
   if (!forceRender && (mode === 'main_content' || mode === 'product')) {
       try {
         const res = await axios.get(url, { timeout: 10000 });
-        html = res.data;
+        html = typeof res.data === 'string' ? res.data : '';
         finalUrl = res.request.res.responseUrl || url;
         status = res.status;
+        if (
+          html &&
+          mode === 'product' &&
+          !isProductUrl(finalUrl) &&
+          classifyPage(html, finalUrl) !== 'product' &&
+          !listingHasProducts(html, finalUrl)
+        ) {
+          html = '';
+        }
       } catch (e) {
         // Fetch failed, continue to Playwright
       }
@@ -47,6 +60,9 @@ async function runScraper(url, mode, outputDir, options = {}) {
           if (!res) throw new Error('No response');
           status = res.status();
           finalUrl = page.url();
+          if (mode === 'product') {
+            await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+          }
           html = await page.content();
           
           if (mode === 'redesign_context') {
