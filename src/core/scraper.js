@@ -10,6 +10,20 @@ const { classifyPage, extractCatalogLinks, isProductUrl, isLikelyProductLink } =
 
 const turndownService = new TurndownService();
 
+const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+
+function isBlockedStatus(status) {
+  return status === 401 || status === 403 || status === 429;
+}
+
+function browserHeaders() {
+  return {
+    'User-Agent': BROWSER_UA,
+    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+  };
+}
+
 function listingHasProducts(html, pageUrl) {
   return extractCatalogLinks(html, pageUrl).some((link) => isProductUrl(link) || isLikelyProductLink(link));
 }
@@ -34,10 +48,15 @@ async function runScraper(url, mode, outputDir, options = {}) {
   // Try static first if not forced
   if (!forceRender && (mode === 'main_content' || mode === 'product')) {
       try {
-        const res = await axios.get(url, { timeout: 10000 });
+        const res = await axios.get(url, {
+          timeout: 20000,
+          headers: browserHeaders(),
+          validateStatus: (code) => code < 500,
+        });
         html = typeof res.data === 'string' ? res.data : '';
         finalUrl = res.request.res.responseUrl || url;
         status = res.status;
+        if (isBlockedStatus(status)) html = '';
         if (
           html &&
           mode === 'product' &&
@@ -53,13 +72,21 @@ async function runScraper(url, mode, outputDir, options = {}) {
   }
 
   if (!html) {
-      const browser = await chromium.launch();
-      const page = await browser.newPage();
+      const browser = await chromium.launch({ headless: true });
       try {
+          const context = await browser.newContext({
+            userAgent: BROWSER_UA,
+            locale: 'en-US',
+            viewport: { width: 1366, height: 768 },
+          });
+          const page = await context.newPage();
           const res = await page.goto(url, { timeout: 25000, waitUntil: 'domcontentloaded' });
           if (!res) throw new Error('No response');
           status = res.status();
           finalUrl = page.url();
+          if (isBlockedStatus(status)) {
+            throw new Error(`The site refused the request (${status}). It is blocking visits from this network.`);
+          }
           if (mode === 'product') {
             await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
           }
@@ -75,8 +102,6 @@ async function runScraper(url, mode, outputDir, options = {}) {
               const renderedPath = path.join(outputDir, renderedName);
               await fs.writeFile(renderedPath, html);
               
-              await browser.close();
-              
               return {
                   url, finalUrl, status,
                   links: extractLinks(html, finalUrl),
@@ -87,11 +112,9 @@ async function runScraper(url, mode, outputDir, options = {}) {
                   screenshots: { desktopPath: screenPathName }
               };
           }
-      } catch (e) {
+      } finally {
           await browser.close();
-          throw e;
       }
-      await browser.close();
   }
 
   if (mode === 'product') {
